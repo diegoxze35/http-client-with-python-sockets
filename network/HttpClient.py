@@ -1,25 +1,61 @@
 from abc import ABC, abstractmethod
+from typing import Optional
 
 from network.HttpResponse import HttpResponse
 
 class HttpClient(ABC):
+    """
+    This class acts as a very simple HTTP client
+    with methods GET, POST, PUT and DELETE.
+    Also, it allows to add headers and close the
+    connection.
+    """
     HOST: str = 'Host'
     USER_AGENT: str = 'User-Agent'
     ACCEPT: str = 'Accept'
     CONTENT_TYPE: str = 'Content-Type'
+    CONTENT_LENGTH: str = 'Content-Length'
     AUTHORIZATION: str = 'Authorization'
     CONNECTION: str = 'Connection'
 
     def __init__(self, base_url):
-        self.__base_url: str = None
-        self.__protocol: str
-        self.__hostname: str
-        self.__port: str
+        """
+        Contructor that receives an url to make a request.
+        :param base_url: URL where the client will connect.
+        """
+        self.__base_url: str = ''
+        self.__protocol: str = ''
+        self.__hostname: str = ''
+        self.__port: str = ''
         self.__path: str = ''
-        self.__query: str
+        self.__query: str = ''
         assert self.__is_valid_url(url=base_url), f'{base_url} is not a valid url'
 
+    @abstractmethod
+    def __enter__(self):
+        """
+        Method to use 'with' statement
+        :return: it could return this client.
+        """
+        pass
+
+    @abstractmethod
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """
+        Default behavior is call close()
+        :param exc_type:
+        :param exc_val:
+        :param exc_tb:
+        :return: None
+        """
+        pass
+
     def __is_valid_url(self, url: str) -> bool | None:
+        """
+        Check for valid url to make a request.
+        :param url: URL where the client will connect.
+        :return: True if the url is valid, otherwise it throws an exception.
+        """
         try:
             self.__protocol, self.__base_url = url.split('://')
         except ValueError:
@@ -58,9 +94,15 @@ class HttpClient(ABC):
 
     @base_url.setter
     def base_url(self, base_url: str):
+        self.__base_url = ''
+        self.__protocol = ''
+        self.__hostname = ''
+        self.__port = ''
+        self.__path = ''
+        self.__query = ''
         assert self.__is_valid_url(base_url), f'{base_url} is not a valid url'
-        self._on_host_change()
         self.__base_url = base_url
+        self._on_host_change()
 
     @property
     def protocol(self) -> str:
@@ -88,10 +130,18 @@ class HttpClient(ABC):
 
     @abstractmethod
     def _on_host_change(self) -> None:
+        """
+        This method will be executed when the base url is changed.
+        :return: None
+        """
         pass
 
     @abstractmethod
-    def add_header(self, header: str, value: str) -> None:
+    def add_header(self, header: str, value) -> None:
+        pass
+
+    @abstractmethod
+    def remove_header(self, header: str) -> None:
         pass
 
     @abstractmethod
@@ -99,15 +149,15 @@ class HttpClient(ABC):
         pass
 
     @abstractmethod
-    def post(self, body) -> HttpResponse:
+    def post(self, body: str) -> HttpResponse:
         pass
 
     @abstractmethod
-    def put(self) -> HttpResponse:
+    def put(self, body: str) -> HttpResponse:
         pass
 
     @abstractmethod
-    def delete(self) -> HttpResponse:
+    def delete(self, body: Optional[str] = None) -> HttpResponse:
         pass
 
     @abstractmethod
