@@ -2,7 +2,7 @@ from typing import Optional
 
 from network.HttpClient import HttpClient
 from socket import socket, gethostbyname, create_connection
-
+import ssl
 from network.HttpResponse import HttpResponse
 
 
@@ -25,9 +25,26 @@ class SocketHttpClient(HttpClient):
                 HttpClient.CONNECTION: 'close'
             }
         }
+        self.__ssl_context: ssl.SSLContext | None = None
+        self.__create_ssl_context_if_needed()
         self.__connected = True
         ip = gethostbyname(self.hostname)
-        self.__socket: socket = create_connection((ip, self.port), timeout=5)
+        #self.__socket: socket = create_connection((ip, self.port), timeout=5)
+        self.__socket: socket = self.__create_socket(ip)
+
+    def __create_socket(self, ip: str) -> socket:
+        """Crea socket normal o SSL según el protocolo"""
+        sock = create_connection((ip, self.port), timeout=5)
+        if self.protocol == 'https' and self.__ssl_context:
+            return self.__ssl_context.wrap_socket(sock, server_hostname=self.hostname)
+        return sock
+
+    def __create_ssl_context_if_needed(self):
+        """Crea contexto SSL solo para conexiones HTTPS"""
+        if self.protocol == 'https':
+            self.__ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+            self.__ssl_context.check_hostname = False
+            self.__ssl_context.verify_mode = ssl.CERT_NONE
 
     def __enter__(self):
         self._connect()
@@ -39,11 +56,15 @@ class SocketHttpClient(HttpClient):
     def _connect(self):
         if not self.__connected:
             ip = gethostbyname(self.hostname)
-            self.__socket = create_connection((ip, self.port), timeout=5)
+            #self.__socket = create_connection((ip, self.port), timeout=5)
+            self.__socket = self.__create_socket(ip)
             self.__connected = True
 
     def _on_host_change(self):
         self.__request['headers'][HttpClient.HOST] = f'{self.hostname}:{self.port}'
+        self.__create_ssl_context_if_needed()
+        self.close()  # Cerrar conexión anterior
+        self._connect()
 
     def add_header(self, header: str, value):
         self.__request['headers'][header] = value

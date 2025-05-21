@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
 from typing import Optional
-
 from network.HttpResponse import HttpResponse
 
 class HttpClient(ABC):
@@ -68,7 +67,7 @@ class HttpClient(ABC):
             self.__hostname, self.__port = hostname_port.split(':')
         except ValueError:
             self.__hostname = hostname_port
-            self.__port = 80
+            self.__port = 80 if self.__protocol == 'http' else 443
         try:
             #print(self.__base_url.split('/'))
             for p in self.__base_url.split('/')[1:]:
